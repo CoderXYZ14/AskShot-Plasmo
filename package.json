@@ -42,7 +42,8 @@
       "activeTab",
       "storage",
       "tabs",
-      "scripting"
+      "scripting",
+      "storage"
     ]
   }
 }
