@@ -1,0 +1,5 @@
+{
+  "popups": {
+    "default": "src/popup/index.tsx"
+  }
+}
