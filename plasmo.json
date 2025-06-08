@@ -1,5 +1,14 @@
 {
+  "extends": "@plasmohq/plasmo/config",
   "popups": {
     "default": "src/popup/index.tsx"
-  }
+  },
+  "contentScripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/contents/draw.ts"],
+      "world": "MAIN"
+    }
+  ],
+  "permissions": ["activeTab", "scripting", "storage", "tabs"]
 }

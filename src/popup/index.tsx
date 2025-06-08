@@ -16,36 +16,107 @@ const IndexPopup = () => {
   // Load screenshot if exists
   useEffect(() => {
     chrome.storage.local.get(["screenshot"], (result) => {
-      if (result.screenshot) setScreenshot(result.screenshot)
+      if (result.screenshot) {
+        console.log("Loaded screenshot from storage")
+        setScreenshot(result.screenshot)
+      }
     })
   }, [])
 
-  // Listen for messages from content script
   useEffect(() => {
     const listener = (message: any) => {
+      console.log("Popup received message:", message)
+
       if (message.action === "screenshot-captured" && message.data) {
         setScreenshot(message.data)
         setIsDrawing(false)
+        console.log("Screenshot received and drawing mode disabled")
       }
     }
     chrome.runtime.onMessage.addListener(listener)
     return () => chrome.runtime.onMessage.removeListener(listener)
   }, [])
 
-  const startDrawing = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id)
-        chrome.tabs.sendMessage(tabs[0].id, { action: "start-drawing" })
-      setIsDrawing(true)
-    })
+  const startDrawing = async () => {
+    try {
+      console.log("Starting drawing mode...")
+
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      })
+
+      if (!tab.id) {
+        console.error("No active tab found")
+        return
+      }
+
+      console.log("Active tab ID:", tab.id)
+
+      // Send message to start drawing - Plasmo content scripts are auto-injected
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          action: "start-drawing"
+        })
+
+        console.log("Start drawing response:", response)
+        setIsDrawing(true)
+
+        // Close popup so user can interact with the page
+        window.close()
+      } catch (messageError) {
+        console.error("Failed to send message to content script:", messageError)
+
+        // Try to inject the content script manually as fallback
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ["/contents/draw.js"] // Plasmo compiles .ts to .js
+          })
+
+          // Wait a moment then try again
+          setTimeout(async () => {
+            try {
+              const response = await chrome.tabs.sendMessage(tab.id!, {
+                action: "start-drawing"
+              })
+              console.log("Start drawing response (retry):", response)
+              setIsDrawing(true)
+              window.close()
+            } catch (retryError) {
+              console.error("Retry failed:", retryError)
+              setIsDrawing(false)
+            }
+          }, 100)
+        } catch (injectError) {
+          console.error("Script injection failed:", injectError)
+          setIsDrawing(false)
+        }
+      }
+    } catch (error) {
+      console.error("Drawing initialization failed:", error)
+      setIsDrawing(false)
+    }
   }
 
-  const cancelDrawing = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id)
-        chrome.tabs.sendMessage(tabs[0].id, { action: "cancel-drawing" })
+  const cancelDrawing = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      })
+
+      if (tab.id) {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: "cancel-drawing"
+        })
+      }
+
       setIsDrawing(false)
-    })
+    } catch (error) {
+      console.error("Cancel drawing failed:", error)
+      setIsDrawing(false)
+    }
   }
 
   const handleSend = () => {
@@ -64,21 +135,22 @@ const IndexPopup = () => {
     }, 1500)
   }
 
+  const clearScreenshot = () => {
+    setScreenshot(null)
+    chrome.storage.local.remove("screenshot")
+  }
+
   return isDrawing ? (
     // Minimal Drawing Mode UI
-    <div className="w-[180px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden border border-white/40">
-      <div className="p-3 bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={cancelDrawing}
-            className="relative p-2 rounded-xl text-white overflow-hidden transition-all hover:shadow-lg group">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-pink-500 transition-transform group-hover:scale-[1.1] duration-300" />
-            <X size={16} className="relative" />
-          </button>
-          <div className="text-xs font-medium text-gray-500/70 px-2 py-1 rounded-lg bg-white/50 backdrop-blur-sm border border-white/30">
-            ESC to cancel
-          </div>
-        </div>
+    <div className="w-[200px] h-[60px] bg-white/90 rounded-full shadow-lg backdrop-blur-sm overflow-hidden border border-white/40 p-2">
+      <div className="h-full flex items-center justify-between px-2 gap-2">
+        <button
+          onClick={cancelDrawing}
+          className="relative p-2 rounded-full text-white overflow-hidden transition-all hover:shadow-md group">
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500 to-pink-500 transition-transform group-hover:scale-[1.1] duration-300" />
+          <X size={16} className="relative" />
+        </button>
+        <div className="text-sm font-medium text-gray-600">Draw on page</div>
       </div>
     </div>
   ) : (
@@ -96,9 +168,16 @@ const IndexPopup = () => {
 
           <div className="flex-1">
             {screenshot ? (
-              <span className="text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
-                Screenshot ready
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+                  Screenshot ready
+                </span>
+                <button
+                  onClick={clearScreenshot}
+                  className="text-xs text-gray-500 hover:text-red-500">
+                  Clear
+                </button>
+              </div>
             ) : (
               <span className="text-sm font-medium text-gray-500/70">
                 Click pencil to capture screen
