@@ -10,31 +10,17 @@ const IndexPopup = () => {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
-  const [screenshot, setScreenshot] = useState<string | null>(null)
+  // Your useState already present
   const [isDrawing, setIsDrawing] = useState(false)
+  const [screenshot, setScreenshot] = useState<string | null>(null)
 
-  // Load screenshot if exists
   useEffect(() => {
-    chrome.storage.local.get(["screenshot"], (result) => {
-      if (result.screenshot) {
-        console.log("Loaded screenshot from storage")
-        setScreenshot(result.screenshot)
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.action === "screenshot-captured") {
+        setScreenshot(msg.data)
+        setIsDrawing(false)
       }
     })
-  }, [])
-
-  useEffect(() => {
-    const listener = (message: any) => {
-      console.log("Popup received message:", message)
-
-      if (message.action === "screenshot-captured" && message.data) {
-        setScreenshot(message.data)
-        setIsDrawing(false)
-        console.log("Screenshot received and drawing mode disabled")
-      }
-    }
-    chrome.runtime.onMessage.addListener(listener)
-    return () => chrome.runtime.onMessage.removeListener(listener)
   }, [])
 
   const startDrawing = async () => {
@@ -53,38 +39,39 @@ const IndexPopup = () => {
 
       console.log("Active tab ID:", tab.id)
 
-      // Send message to start drawing - Plasmo content scripts are auto-injected
-      try {
-        const response = await chrome.tabs.sendMessage(tab.id, {
+      // Try to send start-drawing message to content script
+      const trySendStartDrawing = async () => {
+        const response = await chrome.tabs.sendMessage(tab.id!, {
           action: "start-drawing"
         })
 
         console.log("Start drawing response:", response)
-        setIsDrawing(true)
 
-        // Close popup so user can interact with the page
-        window.close()
+        if (response?.status === "started") {
+          setIsDrawing(true)
+          window.close() // ✅ Only close after confirmation
+        } else {
+          console.warn("Unexpected response:", response)
+        }
+      }
+
+      try {
+        await trySendStartDrawing()
       } catch (messageError) {
-        console.error("Failed to send message to content script:", messageError)
+        console.warn("Initial sendMessage failed, injecting script...")
 
-        // Try to inject the content script manually as fallback
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ["/contents/draw.js"] // Plasmo compiles .ts to .js
+            files: ["/contents/draw.js"]
           })
 
-          // Wait a moment then try again
+          // Retry after script injection
           setTimeout(async () => {
             try {
-              const response = await chrome.tabs.sendMessage(tab.id!, {
-                action: "start-drawing"
-              })
-              console.log("Start drawing response (retry):", response)
-              setIsDrawing(true)
-              window.close()
+              await trySendStartDrawing()
             } catch (retryError) {
-              console.error("Retry failed:", retryError)
+              console.error("Retry after inject failed:", retryError)
               setIsDrawing(false)
             }
           }, 100)
@@ -99,25 +86,26 @@ const IndexPopup = () => {
     }
   }
 
-  const cancelDrawing = async () => {
-    try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true
-      })
-
-      if (tab.id) {
-        await chrome.tabs.sendMessage(tab.id, {
-          action: "cancel-drawing"
-        })
-      }
-
+  const cancelDrawing = () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id!, { action: "cancel-drawing" })
       setIsDrawing(false)
-    } catch (error) {
-      console.error("Cancel drawing failed:", error)
-      setIsDrawing(false)
-    }
+    })
   }
+
+  useEffect(() => {
+    const listener = (message: any) => {
+      console.log("Popup received message:", message)
+
+      if (message.action === "screenshot-captured" && message.data) {
+        setScreenshot(message.data)
+        setIsDrawing(false)
+        console.log("Screenshot received and drawing mode disabled")
+      }
+    }
+    chrome.runtime.onMessage.addListener(listener)
+    return () => chrome.runtime.onMessage.removeListener(listener)
+  }, [])
 
   const handleSend = () => {
     if (!input.trim()) return

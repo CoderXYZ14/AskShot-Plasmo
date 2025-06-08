@@ -9,75 +9,105 @@ document.addEventListener("message", (e: any) => {
   }
 })
 
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "start-drawing") {
-    startDrawing()
+    startDrawingOverlay()
     sendResponse({ status: "started" })
-  } else if (message.action === "cancel-drawing") {
-    removeOverlay()
-    sendResponse({ status: "cancelled" })
   }
 })
 
-function startDrawing() {
-  const overlay = document.createElement("div")
-  overlay.style.position = "fixed"
-  overlay.style.top = "0"
-  overlay.style.left = "0"
-  overlay.style.width = "100vw"
-  overlay.style.height = "100vh"
-  overlay.style.zIndex = "999999"
-  overlay.style.cursor = "crosshair"
-  overlay.style.backgroundColor = "rgba(0,0,0,0.05)"
-  document.body.appendChild(overlay)
+const startDrawingOverlay = () => {
+  console.log("🖌️ Drawing overlay activated")
 
-  overlay.addEventListener("mousedown", (e) => {
+  // Prevent multiple overlays
+  if (document.getElementById("askshot-capture-canvas")) {
+    return
+  }
+
+  const canvas = document.createElement("canvas")
+  canvas.id = "askshot-capture-canvas"
+  canvas.style.position = "fixed"
+  canvas.style.top = "0"
+  canvas.style.left = "0"
+  canvas.style.width = "100vw"
+  canvas.style.height = "100vh"
+  canvas.style.zIndex = "9999999"
+  canvas.style.cursor = "crosshair"
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+
+  const ctx = canvas.getContext("2d")!
+  let startX = 0,
+    startY = 0,
+    isDrawing = false,
+    rect = { x: 0, y: 0, width: 0, height: 0 }
+
+  // Transparent overlay
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)"
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // Mouse events
+  canvas.onmousedown = (e) => {
     isDrawing = true
     startX = e.clientX
     startY = e.clientY
+  }
 
-    rect = document.createElement("div")
-    rect.style.position = "absolute"
-    rect.style.border = "2px dashed #555"
-    rect.style.background = "rgba(0,0,0,0.2)"
-    rect.style.zIndex = "9999999"
-    overlay.appendChild(rect)
-  })
+  canvas.onmousemove = (e) => {
+    if (!isDrawing) return
+    const currentX = e.clientX
+    const currentY = e.clientY
 
-  overlay.addEventListener("mousemove", (e) => {
-    if (!isDrawing || !rect) return
-    const width = e.clientX - startX
-    const height = e.clientY - startY
-    rect.style.left = `${Math.min(startX, e.clientX)}px`
-    rect.style.top = `${Math.min(startY, e.clientY)}px`
-    rect.style.width = `${Math.abs(width)}px`
-    rect.style.height = `${Math.abs(height)}px`
-  })
+    rect.x = Math.min(startX, currentX)
+    rect.y = Math.min(startY, currentY)
+    rect.width = Math.abs(currentX - startX)
+    rect.height = Math.abs(currentY - startY)
 
-  overlay.addEventListener("mouseup", async () => {
+    // Redraw
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)"
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    ctx.clearRect(rect.x, rect.y, rect.width, rect.height)
+    ctx.strokeStyle = "#00f"
+    ctx.lineWidth = 2
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+  }
+
+  canvas.onmouseup = async () => {
     isDrawing = false
 
-    const bounds = rect?.getBoundingClientRect()
-    if (bounds) {
-      const tab = await chrome.runtime.sendMessage({ action: "get-screenshot" })
-      const cropped = await cropImage(tab, bounds)
-      chrome.storage.local.set({ screenshot: cropped })
-      chrome.runtime.sendMessage({
-        action: "screenshot-captured",
-        data: cropped
-      })
-    }
+    // ✅ Take screenshot of visible tab
+    chrome.runtime.sendMessage(
+      {
+        action: "capture-screenshot",
+        region: rect
+      },
+      (response) => {
+        console.log("Captured & Cropped Screenshot:", response)
+      }
+    )
 
-    removeOverlay()
-  })
+    // Clean up canvas
+    canvas.remove()
+  }
+
+  // Optional: Cancel on Esc
+  document.onkeydown = (e) => {
+    if (e.key === "Escape") {
+      console.log("✖️ Drawing cancelled")
+      canvas.remove()
+    }
+  }
+
+  document.body.appendChild(canvas)
 }
 
 function removeOverlay() {
-  document.querySelectorAll("div").forEach((el) => {
-    if (el.style.zIndex === "999999" || el.style.zIndex === "9999999") {
-      el.remove()
-    }
-  })
+  const el =
+    document.getElementById("your-overlay-id") ||
+    document.querySelector("div[style*='999999']")
+  el?.remove()
 }
 
 // Crop logic
@@ -102,4 +132,18 @@ async function cropImage(base64: string, rect: DOMRect): Promise<string> {
     rect.height
   )
   return canvas.toDataURL("image/png")
+}
+
+function addCancelButton(overlay: HTMLDivElement) {
+  const cancel = document.createElement("button")
+  cancel.innerText = "Cancel"
+  cancel.style.position = "fixed"
+  cancel.style.top = "10px"
+  cancel.style.right = "10px"
+  cancel.style.zIndex = "10000000"
+  cancel.style.padding = "8px"
+  cancel.style.background = "#fff"
+  cancel.style.border = "1px solid #333"
+  cancel.onclick = () => removeOverlay()
+  overlay.appendChild(cancel)
 }
