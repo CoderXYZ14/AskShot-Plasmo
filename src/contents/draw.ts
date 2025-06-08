@@ -77,19 +77,43 @@ const startDrawingOverlay = () => {
   canvas.onmouseup = async () => {
     isDrawing = false
 
-    // ✅ Take screenshot of visible tab
+    if (rect.width < 10 || rect.height < 10) {
+      console.log("Selection too small, cancelling")
+      canvas.remove()
+      return
+    }
+
+    // Save the rect dimensions before removing canvas
+    const selectedRect = { ...rect }
+
+    // Clean up canvas immediately for better UX
+    canvas.remove()
+
+    // Request screenshot and crop it
     chrome.runtime.sendMessage(
       {
-        action: "capture-screenshot",
-        region: rect
+        action: "capture-screenshot"
       },
-      (response) => {
-        console.log("Captured & Cropped Screenshot:", response)
+      async (response) => {
+        console.log("Received full screenshot from background")
+        if (response && response.success && response.data) {
+          try {
+            // Crop the screenshot to the selected region
+            const croppedImage = await cropImage(response.data, selectedRect)
+
+            // Send the cropped image back to be stored
+            chrome.runtime.sendMessage({
+              action: "store-cropped-screenshot",
+              data: croppedImage
+            })
+
+            console.log("Cropped screenshot sent for storage")
+          } catch (error) {
+            console.error("Error cropping screenshot:", error)
+          }
+        }
       }
     )
-
-    // Clean up canvas
-    canvas.remove()
   }
 
   // Optional: Cancel on Esc
@@ -111,7 +135,10 @@ function removeOverlay() {
 }
 
 // Crop logic
-async function cropImage(base64: string, rect: DOMRect): Promise<string> {
+async function cropImage(
+  base64: string,
+  rect: { x: number; y: number; width: number; height: number }
+): Promise<string> {
   const img = new Image()
   img.src = base64
   await img.decode()
@@ -122,8 +149,8 @@ async function cropImage(base64: string, rect: DOMRect): Promise<string> {
   const ctx = canvas.getContext("2d")!
   ctx.drawImage(
     img,
-    rect.left,
-    rect.top,
+    rect.x,
+    rect.y,
     rect.width,
     rect.height,
     0,

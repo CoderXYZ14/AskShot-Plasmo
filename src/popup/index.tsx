@@ -14,30 +14,25 @@ const IndexPopup = () => {
   const [isDrawing, setIsDrawing] = useState(false)
   const [screenshot, setScreenshot] = useState<string | null>(null)
 
+  // Combined effect for handling screenshots
   useEffect(() => {
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.action === "screenshot-captured") {
-        setScreenshot(msg.data)
-        setIsDrawing(false)
-      }
-    })
-  }, [])
-
-  // Load screenshot if exists
-  useEffect(() => {
+    // Load existing screenshot from storage when popup opens
     chrome.storage.local.get(["screenshot"], (result) => {
       if (result.screenshot) setScreenshot(result.screenshot)
     })
-  }, [])
 
-  // Listen for messages from content script
-  useEffect(() => {
+    // Listen for new screenshot messages
     const listener = (message: any) => {
       if (message.action === "screenshot-captured" && message.data) {
+        console.log(
+          "Screenshot received in popup:",
+          message.data.substring(0, 50) + "..."
+        )
         setScreenshot(message.data)
         setIsDrawing(false)
       }
     }
+
     chrome.runtime.onMessage.addListener(listener)
     return () => chrome.runtime.onMessage.removeListener(listener)
   }, [])
@@ -182,6 +177,16 @@ const IndexPopup = () => {
               src={screenshot}
               alt="Screenshot"
               className="w-full h-full object-contain rounded-2xl"
+              onError={(e) => {
+                console.error("Image failed to load:", e)
+                // Fallback if image fails to load
+                e.currentTarget.onerror = null
+                e.currentTarget.style.display = "none"
+                // Try to reload the image from storage
+                chrome.storage.local.get(["screenshot"], (result) => {
+                  if (result.screenshot) setScreenshot(result.screenshot)
+                })
+              }}
             />
           ) : (
             <span className="bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent font-medium">
