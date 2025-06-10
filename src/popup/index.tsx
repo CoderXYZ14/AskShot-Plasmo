@@ -1,6 +1,7 @@
-import { Edit2, Send, X } from "lucide-react"
+import { Edit2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { analyzeScreenshot } from "../utils/api"
 import "../styles/global.css"
 
 const IndexPopup = () => {
@@ -119,20 +120,33 @@ const IndexPopup = () => {
     })
   }
 
-  const handleSend = () => {
-    if (!input.trim()) return
-    setMessages((prev) => [...prev, { sender: "user", text: input }])
+  const handleSend = async () => {
+    if (!input.trim() || !screenshot) return
+    
+    const userQuestion = input.trim()
+    setMessages((prev) => [...prev, { sender: "user", text: userQuestion }])
     setInput("")
     setLoading(true)
 
-    // simulate API call
-    setTimeout(() => {
+    try {
+      // Call our API endpoint to analyze the screenshot
+      const response = await analyzeScreenshot(screenshot, userQuestion)
+      
+      // Add the AI response to the messages
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: "Here's a possible explanation..." }
+        { sender: "ai", text: response.answer }
       ])
+    } catch (error) {
+      console.error("Error getting AI response:", error)
+      // Show error message to user
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "Sorry, I couldn't analyze that screenshot. Please try again." }
+      ])
+    } finally {
       setLoading(false)
-    }, 1500)
+    }
   }
 
   // Determine which UI to show based on drawing state and screenshot existence
