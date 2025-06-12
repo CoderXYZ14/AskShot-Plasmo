@@ -9,17 +9,17 @@ export interface AuthSession {
 }
 
 let currentSession: AuthSession | null = null
-
+const authUrl = process.env.PLASMO_PUBLIC_BACKEND_URL || "http://localhost:3000"
 export const signIn = async (): Promise<AuthSession | null> => {
   return new Promise((resolve) => {
-    const authUrl = "http://localhost:3000/auth/signin?prompt=select_account"
+    const signInUrl = `${authUrl}/auth/signin?prompt=select_account`
     const width = 600
     const height = 700
     const left = window.screen.width / 2 - width / 2
     const top = window.screen.height / 2 - height / 2
 
     const authWindow = window.open(
-      authUrl,
+      signInUrl,
       "Auth",
       `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes,status=1`
     )
@@ -56,7 +56,7 @@ export const signOut = async (): Promise<void> => {
   const top = window.screen.height / 2 - height / 2
 
   const signOutWindow = window.open(
-    "http://localhost:3000/api/auth/signout?callbackUrl=/auth/signin?prompt=select_account",
+    `${authUrl}/api/auth/signout?callbackUrl=/auth/signin?prompt=select_account`,
     "SignOut",
     `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes,status=1`
   )
