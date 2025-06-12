@@ -2,6 +2,8 @@ import { Edit2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { analyzeScreenshot } from "../utils/api"
+import { AuthButton } from "../components/AuthButton"
+
 import "../styles/global.css"
 
 const IndexPopup = () => {
@@ -11,29 +13,22 @@ const IndexPopup = () => {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
-  // Your useState already present
   const [isDrawing, setIsDrawing] = useState(false)
   const [screenshot, setScreenshot] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // Function to clear the screenshot
   const clearScreenshot = () => {
-    // Clear from state
     setScreenshot(null)
-
-    // Clear from storage
     chrome.storage.local.remove(["screenshot"], () => {
       console.log("Screenshot cleared from storage")
     })
   }
 
-  // Combined effect for handling screenshots
   useEffect(() => {
-    // Load existing screenshot from storage when popup opens
     chrome.storage.local.get(["screenshot"], (result) => {
       if (result.screenshot) setScreenshot(result.screenshot)
     })
 
-    // Listen for new screenshot messages
     const listener = (message: any) => {
       if (message.action === "screenshot-captured" && message.data) {
         console.log(
@@ -65,7 +60,6 @@ const IndexPopup = () => {
 
       console.log("Active tab ID:", tab.id)
 
-      // Try to send start-drawing message to content script
       const trySendStartDrawing = async () => {
         const response = await chrome.tabs.sendMessage(tab.id!, {
           action: "start-drawing"
@@ -75,7 +69,7 @@ const IndexPopup = () => {
 
         if (response?.status === "started") {
           setIsDrawing(true)
-          window.close() // ✅ Only close after confirmation
+          window.close()
         } else {
           console.warn("Unexpected response:", response)
         }
@@ -92,7 +86,6 @@ const IndexPopup = () => {
             files: ["/contents/draw.js"]
           })
 
-          // Retry after script injection
           setTimeout(async () => {
             try {
               await trySendStartDrawing()
@@ -122,36 +115,54 @@ const IndexPopup = () => {
 
   const handleSend = async () => {
     if (!input.trim() || !screenshot) return
-    
+
     const userQuestion = input.trim()
     setMessages((prev) => [...prev, { sender: "user", text: userQuestion }])
     setInput("")
     setLoading(true)
 
     try {
-      // Call our API endpoint to analyze the screenshot
       const response = await analyzeScreenshot(screenshot, userQuestion)
-      
-      // Add the AI response to the messages
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: response.answer }
-      ])
+      setMessages((prev) => [...prev, { sender: "ai", text: response.answer }])
     } catch (error) {
       console.error("Error getting AI response:", error)
-      // Show error message to user
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: "Sorry, I couldn't analyze that screenshot. Please try again." }
+        {
+          sender: "ai",
+          text: "Sorry, I couldn't analyze that screenshot. Please try again."
+        }
       ])
     } finally {
       setLoading(false)
     }
   }
 
-  // Determine which UI to show based on drawing state and screenshot existence
+  if (!isAuthenticated) {
+    return (
+      <div className="w-[280px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden border border-white/40">
+        <div className="p-4 bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm">
+          <div className="flex flex-col items-center justify-center py-2 gap-4">
+            <div className="text-center">
+              <h2 className="text-lg font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent mb-1">
+                AskShot
+              </h2>
+              <p className="text-sm text-gray-500/80">
+                Please login to continue
+              </p>
+            </div>
+            
+            <AuthButton onAuthChange={(isAuth) => {
+              setIsAuthenticated(isAuth)
+              console.log("Authentication status changed:", isAuth)
+            }} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
   if (isDrawing) {
-    // Minimal Drawing Mode UI
     return (
       <div className="w-[280px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden border border-white/40">
         <div className="p-4 bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm">
@@ -178,7 +189,6 @@ const IndexPopup = () => {
       </div>
     )
   } else if (!screenshot) {
-    // Minimal Pencil Icon UI (when no screenshot exists)
     return (
       <div className="w-[280px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-2xl shadow-lg backdrop-blur-sm overflow-hidden border border-white/40">
         <div className="p-4 bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm">
@@ -202,15 +212,18 @@ const IndexPopup = () => {
             <div className="text-sm font-medium text-gray-600/80 bg-white/50 px-4 py-2 rounded-xl border border-white/40 shadow-sm">
               Click pencil to capture screen
             </div>
+            
+            <AuthButton onAuthChange={(isAuth) => {
+              setIsAuthenticated(isAuth)
+              console.log("Authentication status changed:", isAuth)
+            }} />
           </div>
         </div>
       </div>
     )
   } else {
-    // Main Chat UI (only shown when screenshot exists)
     return (
       <div className="w-[400px] h-[600px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.17)] backdrop-blur-xl flex flex-col overflow-hidden border border-white/40">
-        {/* Drawing Toolbar */}
         <div className="p-3 bg-gradient-to-r from-white/60 to-white/40 backdrop-blur-sm border-b border-white/20">
           <div className="flex items-center gap-2">
             <button
@@ -231,14 +244,17 @@ const IndexPopup = () => {
                 </span>
               )}
             </div>
+            
+            <AuthButton onAuthChange={(isAuth) => {
+              setIsAuthenticated(isAuth)
+              console.log("Authentication status changed:", isAuth)
+            }} />
           </div>
         </div>
 
-        {/* Screenshot Preview */}
         <div className="relative h-48 bg-gradient-to-r from-violet-400 via-fuchsia-300 to-violet-300 animate-gradient p-4 flex flex-col items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent backdrop-blur-[2px]" />
 
-          {/* Clear button - only shown when screenshot exists */}
           {screenshot && (
             <button
               onClick={clearScreenshot}
@@ -256,10 +272,8 @@ const IndexPopup = () => {
                 className="w-full h-full object-contain rounded-2xl"
                 onError={(e) => {
                   console.error("Image failed to load:", e)
-                  // Fallback if image fails to load
                   e.currentTarget.onerror = null
                   e.currentTarget.style.display = "none"
-                  // Try to reload the image from storage
                   chrome.storage.local.get(["screenshot"], (result) => {
                     if (result.screenshot) setScreenshot(result.screenshot)
                   })
@@ -273,7 +287,6 @@ const IndexPopup = () => {
           </div>
         </div>
 
-        {/* Chat Thread */}
         <div className="flex-1 px-4 py-3 overflow-y-auto space-y-3 bg-gradient-to-b from-white/40 to-transparent">
           {messages.map((msg, idx) => (
             <div
@@ -306,7 +319,6 @@ const IndexPopup = () => {
           )}
         </div>
 
-        {/* Input */}
         <div className="p-4 bg-gradient-to-t from-white/60 to-transparent border-t border-white/20">
           <div className="flex items-center bg-white/50 backdrop-blur-sm rounded-2xl px-3 py-1.5 focus-within:bg-white/70 focus-within:shadow-lg transition-all duration-300 border border-white/40">
             <input
