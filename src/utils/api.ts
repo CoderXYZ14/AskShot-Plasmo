@@ -17,18 +17,55 @@ function ensureValidImageData(imageData: string): string {
   }
 }
 
-export async function analyzeScreenshot(screenshot: string, question: string) {
+export async function analyzeScreenshot(
+  screenshot: string,
+  question: string,
+  screenshotId?: string
+) {
   try {
     const validatedScreenshot = ensureValidImageData(screenshot)
 
-    const response = await axios.post(`${API_BASE_URL}/api/analyze`, {
+    const payload: {
+      screenshot: string
+      question: string
+      screenshotId?: string
+    } = {
       screenshot: validatedScreenshot,
       question
-    })
+    }
+
+    // If a screenshotId is provided, include it in the request
+    if (screenshotId) {
+      payload.screenshotId = screenshotId
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/api/analyze`, payload)
 
     return response.data
   } catch (error) {
     console.error("AnalyzeScreenshot | Error:", error)
+    throw error
+  }
+}
+
+export async function getScreenshots() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/screenshots`)
+    return response.data.screenshots
+  } catch (error) {
+    console.error("GetScreenshots | Error:", error)
+    throw error
+  }
+}
+
+export async function getScreenshotQuestions(screenshotId: string) {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/screenshots/${screenshotId}`
+    )
+    return response.data
+  } catch (error) {
+    console.error("GetScreenshotQuestions | Error:", error)
     throw error
   }
 }

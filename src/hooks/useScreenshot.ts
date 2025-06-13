@@ -12,6 +12,12 @@ export const useScreenshot = () => {
       if (message.action === "screenshot-captured" && message.data) {
         console.log("useScreenshot | Screenshot received")
         setScreenshot(message.data)
+        
+        // When a new screenshot is captured, remove any previous screenshot ID
+        // so we don't associate the new screenshot with old conversations
+        chrome.storage.local.remove(["screenshotId"], () => {
+          console.log("useScreenshot | Removed old screenshot ID from storage")
+        })
       }
     }
 
@@ -21,10 +27,18 @@ export const useScreenshot = () => {
 
   const clearScreenshot = () => {
     setScreenshot(null)
-    chrome.storage.local.remove(["screenshot"], () => {
-      console.log("useScreenshot | Screenshot cleared from storage")
+  }
+  
+  const saveScreenshot = (screenshotData: string) => {
+    setScreenshot(screenshotData)
+    chrome.storage.local.set({ screenshot: screenshotData }, () => {
+      console.log("useScreenshot | Screenshot saved to storage")
     })
   }
 
-  return { screenshot, setScreenshot, clearScreenshot }
+  return { 
+    screenshot, 
+    setScreenshot: saveScreenshot, 
+    clearScreenshot 
+  }
 }
