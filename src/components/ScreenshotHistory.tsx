@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
-import { getScreenshots, getScreenshotQuestions } from "~utils/api"
+import { useEffect, useState } from "react"
+
+import { getScreenshotQuestions, getScreenshots } from "~utils/api"
 
 interface Screenshot {
   _id: string
@@ -16,11 +17,17 @@ interface Question {
 
 interface ScreenshotHistoryProps {
   onSelectScreenshot: (imageUrl: string, screenshotId: string) => void
+  onClose: () => void
 }
 
-export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps) => {
+export const ScreenshotHistory = ({
+  onSelectScreenshot,
+  onClose
+}: ScreenshotHistoryProps) => {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([])
-  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(
+    null
+  )
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -30,6 +37,7 @@ export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps
 
   useEffect(() => {
     if (selectedScreenshot) {
+      setQuestions([])
       loadQuestions(selectedScreenshot)
     }
   }, [selectedScreenshot])
@@ -76,7 +84,12 @@ export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-lg font-semibold mb-2 px-4">Screenshot History</h2>
+      <div className="flex justify-between items-center mb-2 px-4">
+        <h2 className="text-lg font-semibold">Screenshot History</h2>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          Close
+        </button>
+      </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-1/3 border-r overflow-y-auto">
           {screenshots.map((screenshot) => (
@@ -85,8 +98,10 @@ export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps
               className={`p-2 cursor-pointer hover:bg-gray-100 ${
                 selectedScreenshot === screenshot._id ? "bg-blue-50" : ""
               }`}
-              onClick={() => handleSelectScreenshot(screenshot)}
-            >
+              onClick={() => {
+                setLoading(true)
+                setSelectedScreenshot(screenshot._id)
+              }}>
               <img
                 src={screenshot.imageUrl}
                 alt="Screenshot thumbnail"
@@ -99,7 +114,27 @@ export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps
           ))}
         </div>
         <div className="w-2/3 overflow-y-auto p-2">
-          {questions.length > 0 ? (
+          {selectedScreenshot && (
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => {
+                  const screenshot = screenshots.find(
+                    (s) => s._id === selectedScreenshot
+                  )
+                  if (screenshot) {
+                    onSelectScreenshot(screenshot.imageUrl, screenshot._id)
+                  }
+                }}
+                className="bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded">
+                Open in Extension
+              </button>
+            </div>
+          )}
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : questions.length > 0 ? (
             questions.map((q) => (
               <div key={q._id} className="mb-4 border-b pb-2">
                 <p className="font-medium">Q: {q.question}</p>
@@ -110,7 +145,9 @@ export const ScreenshotHistory = ({ onSelectScreenshot }: ScreenshotHistoryProps
               </div>
             ))
           ) : (
-            <p className="text-center text-gray-500">No questions for this screenshot</p>
+            <p className="text-center text-gray-500">
+              No questions for this screenshot
+            </p>
           )}
         </div>
       </div>
