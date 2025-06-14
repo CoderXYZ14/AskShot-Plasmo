@@ -1,6 +1,11 @@
+import axios from "axios"
 import { useEffect, useState } from "react"
 
-import { analyzeScreenshot, getScreenshotQuestions } from "../utils/api"
+import {
+  analyzeScreenshot,
+  getScreenshotQuestions,
+  getUserCredits
+} from "../utils/api"
 
 import "../styles/global.css"
 
@@ -36,6 +41,8 @@ const IndexPopup = () => {
     null
   )
   const [showHistory, setShowHistory] = useState(false)
+  const [freeTrialsLeft, setFreeTrialsLeft] = useState<number>(5)
+  const [isTrialExpired, setIsTrialExpired] = useState(false)
 
   const { screenshot, clearScreenshot, setScreenshot } = useScreenshot()
   const { startDrawing } = useDrawing()
@@ -57,8 +64,25 @@ const IndexPopup = () => {
     })
   }, [])
 
+  // Load user credits when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserCredits()
+    }
+  }, [isAuthenticated])
+
+  const loadUserCredits = async () => {
+    try {
+      const data = await getUserCredits()
+      setFreeTrialsLeft(data.freeTrialsLeft)
+      setIsTrialExpired(data.isExpired)
+    } catch (error) {
+      console.error("Error loading user credits:", error)
+    }
+  }
+
   const handleSend = async () => {
-    if (!input.trim() || !screenshot) return
+    if (!input.trim() || !screenshot || isTrialExpired) return
 
     const userQuestion = input.trim()
     setMessages((prev) => [...prev, { sender: "user", text: userQuestion }])
@@ -73,6 +97,12 @@ const IndexPopup = () => {
         screenshotData?.id
       )
       setMessages((prev) => [...prev, { sender: "ai", text: response.answer }])
+
+      // Update free trials left from API response
+      if (response.freeTrialsLeft !== undefined) {
+        setFreeTrialsLeft(response.freeTrialsLeft)
+        setIsTrialExpired(response.isExpired || response.freeTrialsLeft <= 0)
+      }
 
       // Store the screenshotId if it's the first question for this screenshot
       if (response.screenshotId && (!screenshotData || !screenshotData.id)) {
@@ -103,13 +133,31 @@ const IndexPopup = () => {
       }
     } catch (error) {
       console.error("IndexPopup | Error getting AI response:", error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "ai",
-          text: "Sorry, I couldn't analyze that screenshot. Please try again."
-        }
-      ])
+
+      // Check if the error is due to expired credits
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 403 &&
+        error.response?.data?.error === "No credits left"
+      ) {
+        setFreeTrialsLeft(0)
+        setIsTrialExpired(true)
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: "You've used all your free credits. Please upgrade to continue using AskShot."
+          }
+        ])
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: "Sorry, I couldn't analyze that screenshot. Please try again."
+          }
+        ])
+      }
     } finally {
       setLoading(false)
     }
@@ -118,6 +166,10 @@ const IndexPopup = () => {
   const handleAuthChange = (isAuth: boolean) => {
     setIsAuthenticated(isAuth)
     console.log("IndexPopup | Authentication status changed:", isAuth)
+
+    if (isAuth) {
+      loadUserCredits()
+    }
   }
 
   const handleClearScreenshot = () => {
@@ -198,9 +250,9 @@ const IndexPopup = () => {
     return (
       <div className="w-[400px] h-[600px] bg-white rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.17)] backdrop-blur-xl flex flex-col overflow-hidden border border-white/40">
         <div className="absolute inset-0 bg-white z-10">
-          <ScreenshotHistory 
-            onSelectScreenshot={handleSelectFromHistory} 
-            onClose={() => setShowHistory(false)} 
+          <ScreenshotHistory
+            onSelectScreenshot={handleSelectFromHistory}
+            onClose={() => setShowHistory(false)}
           />
         </div>
       </div>
@@ -235,7 +287,28 @@ const IndexPopup = () => {
         </button>
       </div>
       <ChatMessages messages={messages} loading={loading} />
-      <ChatInput input={input} onInputChange={setInput} onSend={handleSend} />
+
+      {/* Credits warning for low credits */}
+      {freeTrialsLeft < 3 && freeTrialsLeft > 0 && (
+        <div className="px-4 py-1 text-xs text-amber-700 bg-amber-50">
+          <span className="font-medium">Warning:</span> Only {freeTrialsLeft}{" "}
+          free {freeTrialsLeft === 1 ? "credit" : "credits"} left
+        </div>
+      )}
+
+      <ChatInput
+        input={input}
+        onInputChange={setInput}
+        onSend={handleSend}
+        disabled={isTrialExpired}
+      />
+
+      {/* Credits display */}
+      {isTrialExpired && (
+        <div className="text-xs text-red-600 text-center mt-1 mb-2">
+          Your free credits have expired. Upgrade to continue.
+        </div>
+      )}
     </div>
   )
 }

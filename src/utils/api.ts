@@ -69,3 +69,13 @@ export async function getScreenshotQuestions(screenshotId: string) {
     throw error
   }
 }
+
+export async function getUserCredits() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/user/credits`)
+    return response.data
+  } catch (error) {
+    console.error("GetUserCredits | Error:", error)
+    throw error
+  }
+}
