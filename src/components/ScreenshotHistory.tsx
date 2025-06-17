@@ -75,19 +75,51 @@ export const ScreenshotHistory = ({
   }
 
   if (loading && screenshots.length === 0) {
-    return <div className="p-4 text-center">Loading history...</div>
+    return (
+      <div className="p-8 flex flex-col items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 border-4 border-purple-500/30 rounded-full"></div>
+          <div className="absolute top-0 left-0 w-12 h-12 border-4 border-t-purple-500 border-r-cyan-400 border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+        </div>
+        <div className="mt-4 flex items-center gap-1.5">
+          <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
+          <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse delay-100"></span>
+          <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse delay-200"></span>
+        </div>
+      </div>
+    )
   }
 
   if (screenshots.length === 0) {
-    return <div className="p-4 text-center">No screenshots found</div>
+    return (
+      <div className="p-8 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-8 text-gray-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+        <p className="text-white font-medium">No screenshots found</p>
+        <p className="text-gray-400 text-sm mt-2">
+          Capture a screenshot to get started
+        </p>
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4">
-        <h2 className="text-lg font-semibold text-white">
-          Screenshot History
-        </h2>
+        <h2 className="text-lg font-semibold text-white">Screenshot History</h2>
         <button
           onClick={onClose}
           className="text-white hover:text-gray-300 transition-colors">
@@ -95,7 +127,7 @@ export const ScreenshotHistory = ({
         </button>
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/3 overflow-y-auto">
+        <div className="w-1/3 overflow-y-auto pr-1 custom-scrollbar max-h-[400px]">
           {screenshots.map((screenshot) => (
             <div
               key={screenshot._id}
@@ -121,7 +153,7 @@ export const ScreenshotHistory = ({
             </div>
           ))}
         </div>
-        <div className="w-2/3 overflow-y-auto p-4">
+        <div className="w-2/3 overflow-y-auto p-4 custom-scrollbar max-h-[400px]">
           {selectedScreenshot && (
             <div className="flex justify-end mb-4">
               <button
@@ -138,15 +170,13 @@ export const ScreenshotHistory = ({
               </button>
             </div>
           )}
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+          {loading && selectedScreenshot ? (
+            <div className="flex justify-center items-center h-32 bg-gray-800/50 backdrop-blur-sm rounded-lg">
+              <div className="w-10 h-10 border-4 border-t-purple-500 border-r-cyan-400 border-b-purple-500 border-l-cyan-400 rounded-full animate-spin"></div>
             </div>
           ) : questions.length > 0 ? (
             questions.map((q) => (
-              <div
-                key={q._id}
-                className="mb-6 rounded-lg bg-gray-800 p-4">
+              <div key={q._id} className="mb-6 rounded-lg bg-gray-800 p-4">
                 <div className="flex items-start mb-2">
                   <div className="bg-gray-700 rounded-full p-1 mr-2">
                     <svg
@@ -177,7 +207,9 @@ export const ScreenshotHistory = ({
                       />
                     </svg>
                   </div>
-                  <p className="text-gray-300">{q.answer}</p>
+                  <div className="text-gray-300 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {q.answer}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 text-right">
                   {new Date(q.createdAt).toLocaleString()}

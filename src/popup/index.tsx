@@ -5,16 +5,13 @@ import {
   LogOut,
   MessageCircle,
   Moon,
-  Send,
   Settings,
   Sparkles,
   Sun,
-  Trash2,
-  Upload,
   User,
   Zap
 } from "lucide-react"
-import { animate, AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 
 import {
@@ -27,7 +24,6 @@ import "../styles/global.css"
 
 import {
   AuthScreen,
-  CaptureScreen,
   ChatInput,
   ChatMessages,
   ScreenshotDisplay,
@@ -457,18 +453,31 @@ const IndexPopup = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
-                <Sparkles className="w-6 h-6 text-purple-400" />
-              </motion.div>
-              <span className="font-bold text-lg bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                AskShot
-              </span>
-              {userTier === "paid" && (
-                <div className="bg-purple-500/20 text-purple-300 text-xs px-2 py-0.5 rounded-full border border-purple-500/30">
-                  Pro
+                className="flex items-center space-x-2"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}>
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 via-pink-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/25">
+                  <Sparkles className="h-5 w-5 text-white" />
                 </div>
-              )}
+                <span className="text-xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                  AskShot
+                </span>
+              </motion.div>
+              {userTier === "paid" ? (
+                <div className="bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 text-xs px-2 py-0.5 rounded-full border border-purple-500/30">
+                  <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent font-medium">
+                    Pro
+                  </span>
+                </div>
+              ) : freeTrialsLeft <= 3 ? (
+                <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 text-xs px-2 py-0.5 rounded-full border border-red-500/30 animate-pulse">
+                  <span className="text-red-400 font-medium">
+                    {freeTrialsLeft === 0
+                      ? "No credits left"
+                      : `${freeTrialsLeft} credits left`}
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center gap-2">
@@ -512,6 +521,16 @@ const IndexPopup = () => {
                       exit={{ opacity: 0, y: -10 }}
                       className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a2e]/95 backdrop-blur-md border border-[#333]/50 rounded-lg shadow-xl z-50">
                       <div className="p-2">
+                        <a
+                          href={`${process.env.PLASMO_PUBLIC_BACKEND_URL}/#pricing`}
+                          target="_blank"
+                          onClick={() => setShowDropdown(false)}
+                          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a2e]/80 flex items-center gap-2 mb-1 bg-gradient-to-r from-purple-500/20 to-cyan-500/20">
+                          <span className="h-4 w-4 flex items-center justify-center text-cyan-400 font-bold">
+                            ⭐
+                          </span>
+                          Upgrade
+                        </a>
                         <button
                           onClick={() => {
                             setShowDropdown(false)
@@ -709,7 +728,13 @@ const IndexPopup = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-xs text-red-400 text-center px-4 py-2 bg-red-900/20 border-t border-red-900/30">
-                    Your free credits have expired. Upgrade to continue.
+                    Your free credits have expired.{" "}
+                    <a
+                      href={`${process.env.PLASMO_PUBLIC_BACKEND_URL}/#pricing`}
+                      target="_blank"
+                      className="font-medium ml-1 bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-purple-500 hover:from-red-500 hover:to-purple-600 transition-colors underline underline-offset-2">
+                      Upgrade to continue
+                    </a>
                   </motion.div>
                 )}
               </motion.div>

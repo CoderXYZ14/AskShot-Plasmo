@@ -1,5 +1,4 @@
 import { AuthScreen } from "./AuthScreen"
-import { CaptureScreen } from "./CaptureScreen"
 import { ChatHeader } from "./ChatHeader"
 import { ChatInput } from "./ChatInput"
 import { ChatMessages } from "./ChatMessages"
@@ -8,7 +7,6 @@ import { ScreenshotHistory } from "./ScreenshotHistory"
 
 export {
   AuthScreen,
-  CaptureScreen,
   ChatHeader,
   ChatInput,
   ChatMessages,
