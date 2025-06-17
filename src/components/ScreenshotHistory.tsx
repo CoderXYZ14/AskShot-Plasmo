@@ -83,26 +83,26 @@ export const ScreenshotHistory = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <div className="flex justify-between items-center p-4 border-b border-white/40 bg-white/80 backdrop-blur-sm">
-        <h2 className="text-lg font-semibold text-indigo-900">
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center p-4">
+        <h2 className="text-lg font-semibold text-white">
           Screenshot History
         </h2>
         <button
           onClick={onClose}
-          className="text-indigo-600 hover:text-indigo-800 transition-colors">
+          className="text-white hover:text-gray-300 transition-colors">
           Close
         </button>
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/3 border-r border-white/40 overflow-y-auto bg-white/30 backdrop-blur-sm">
+        <div className="w-1/3 overflow-y-auto">
           {screenshots.map((screenshot) => (
             <div
               key={screenshot._id}
-              className={`m-2 cursor-pointer rounded-lg shadow-sm transition-all hover:shadow-md ${
+              className={`m-2 cursor-pointer rounded-lg transition-all ${
                 selectedScreenshot === screenshot._id
-                  ? "ring-2 ring-indigo-400 bg-white/80"
-                  : "bg-white/50 hover:bg-white/70"
+                  ? "ring-1 ring-purple-500 bg-gray-800"
+                  : "bg-gray-900 hover:bg-gray-800"
               }`}
               onClick={() => {
                 setLoading(true)
@@ -114,7 +114,7 @@ export const ScreenshotHistory = ({
                   alt="Screenshot thumbnail"
                   className="w-full h-auto rounded-md"
                 />
-                <p className="text-xs text-indigo-700 mt-2 font-medium">
+                <p className="text-xs text-gray-400 mt-2">
                   {new Date(screenshot.createdAt).toLocaleString()}
                 </p>
               </div>
@@ -133,25 +133,25 @@ export const ScreenshotHistory = ({
                     onSelectScreenshot(screenshot.imageUrl, screenshot._id)
                   }
                 }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1.5 px-3 rounded-full shadow-sm transition-colors">
+                className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm py-1.5 px-3 rounded-full transition-colors">
                 Open in Extension
               </button>
             </div>
           )}
           {loading ? (
             <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-600"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
             </div>
           ) : questions.length > 0 ? (
             questions.map((q) => (
               <div
                 key={q._id}
-                className="mb-6 rounded-lg bg-white/70 backdrop-blur-sm shadow-sm p-4 border border-white/40">
+                className="mb-6 rounded-lg bg-gray-800 p-4">
                 <div className="flex items-start mb-2">
-                  <div className="bg-indigo-100 rounded-full p-1 mr-2">
+                  <div className="bg-gray-700 rounded-full p-1 mr-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 text-indigo-700"
+                      className="h-4 w-4 text-purple-400"
                       viewBox="0 0 20 20"
                       fill="currentColor">
                       <path
@@ -161,13 +161,13 @@ export const ScreenshotHistory = ({
                       />
                     </svg>
                   </div>
-                  <p className="font-medium text-indigo-900">{q.question}</p>
+                  <p className="font-medium text-white">{q.question}</p>
                 </div>
                 <div className="flex items-start ml-7">
-                  <div className="bg-purple-100 rounded-full p-1 mr-2">
+                  <div className="bg-gray-700 rounded-full p-1 mr-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 text-purple-700"
+                      className="h-4 w-4 text-blue-400"
                       viewBox="0 0 20 20"
                       fill="currentColor">
                       <path
@@ -177,18 +177,18 @@ export const ScreenshotHistory = ({
                       />
                     </svg>
                   </div>
-                  <p className="text-gray-700">{q.answer}</p>
+                  <p className="text-gray-300">{q.answer}</p>
                 </div>
-                <p className="text-xs text-indigo-500 mt-3 text-right">
+                <p className="text-xs text-gray-500 mt-3 text-right">
                   {new Date(q.createdAt).toLocaleString()}
                 </p>
               </div>
             ))
           ) : (
-            <div className="flex flex-col items-center justify-center h-32 bg-white/50 rounded-lg border border-white/40 p-4">
+            <div className="flex flex-col items-center justify-center h-32 bg-gray-800 rounded-lg p-4">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-indigo-300 mb-2"
+                className="h-8 w-8 text-gray-600 mb-2"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor">
@@ -199,7 +199,7 @@ export const ScreenshotHistory = ({
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                 />
               </svg>
-              <p className="text-center text-indigo-500 font-medium">
+              <p className="text-center text-gray-400">
                 No questions for this screenshot
               </p>
             </div>

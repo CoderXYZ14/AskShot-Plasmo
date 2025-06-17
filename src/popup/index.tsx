@@ -1,5 +1,21 @@
 import axios from "axios"
-import { useEffect, useState } from "react"
+import {
+  Camera,
+  History,
+  LogOut,
+  MessageCircle,
+  Moon,
+  Send,
+  Settings,
+  Sparkles,
+  Sun,
+  Trash2,
+  Upload,
+  User,
+  Zap
+} from "lucide-react"
+import { animate, AnimatePresence, motion } from "motion/react"
+import { useEffect, useRef, useState } from "react"
 
 import {
   analyzeScreenshot,
@@ -12,7 +28,6 @@ import "../styles/global.css"
 import {
   AuthScreen,
   CaptureScreen,
-  ChatHeader,
   ChatInput,
   ChatMessages,
   ScreenshotDisplay,
@@ -23,6 +38,8 @@ import { useDrawing, useScreenshot } from "~hooks"
 interface Message {
   sender: "ai" | "user"
   text: string
+  id?: string
+  timestamp?: Date
 }
 
 interface ScreenshotData {
@@ -30,9 +47,117 @@ interface ScreenshotData {
   dataUrl: string
 }
 
+interface Particle {
+  id: number
+  x: number
+  y: number
+  size: number
+  speedX: number
+  speedY: number
+  opacity: number
+}
+
+const ParticleBackground = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const particlesRef = useRef<Particle[]>([])
+  const animationRef = useRef<number>()
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    canvas.width = 400
+    canvas.height = 600
+
+    // Initialize particles
+    for (let i = 0; i < 30; i++) {
+      particlesRef.current.push({
+        id: i,
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: (Math.random() - 0.5) * 0.5,
+        opacity: Math.random() * 0.5 + 0.2
+      })
+    }
+
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      // Draw grid
+      ctx.strokeStyle = "rgba(139, 92, 246, 0.1)"
+      ctx.lineWidth = 0.5
+      for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, canvas.height)
+        ctx.stroke()
+      }
+      for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(canvas.width, y)
+        ctx.stroke()
+      }
+
+      // Draw particles
+      particlesRef.current.forEach((particle) => {
+        particle.x += particle.speedX
+        particle.y += particle.speedY
+
+        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1
+        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1
+
+        const gradient = ctx.createRadialGradient(
+          particle.x,
+          particle.y,
+          0,
+          particle.x,
+          particle.y,
+          particle.size * 2
+        )
+        gradient.addColorStop(0, `rgba(139, 92, 246, ${particle.opacity})`)
+        gradient.addColorStop(1, `rgba(6, 182, 212, 0)`)
+
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      animationRef.current = requestAnimationFrame(animate)
+    }
+
+    animate()
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+      style={{ mixBlendMode: "screen" }}
+    />
+  )
+}
+
 const IndexPopup = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { sender: "ai", text: "Hi! Ask me anything about the image." }
+    {
+      sender: "ai",
+      text: "Hi! Ask me anything about the image.",
+      id: "1",
+      timestamp: new Date()
+    }
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -43,25 +168,44 @@ const IndexPopup = () => {
   const [showHistory, setShowHistory] = useState(false)
   const [freeTrialsLeft, setFreeTrialsLeft] = useState<number>(5)
   const [isTrialExpired, setIsTrialExpired] = useState(false)
+  const [isDark, setIsDark] = useState(true)
+  const [currentView, setCurrentView] = useState<
+    "capture" | "chat" | "history"
+  >("capture")
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [userTier, setUserTier] = useState<"free" | "paid">("free")
 
   const { screenshot, clearScreenshot, setScreenshot } = useScreenshot()
   const { startDrawing } = useDrawing()
 
   // Load screenshot and conversation history from storage when component mounts
   useEffect(() => {
-    chrome.storage.local.get(["screenshot", "screenshotId"], (result) => {
-      if (result.screenshot) {
-        if (result.screenshotId) {
-          setScreenshotData({
-            id: result.screenshotId,
-            dataUrl: result.screenshot
-          })
+    chrome.storage.local.get(
+      ["screenshot", "screenshotId", "currentView"],
+      (result) => {
+        if (result.screenshot) {
+          setScreenshot(result.screenshot)
 
-          // Load conversation history for this screenshot
-          loadConversationHistory(result.screenshotId)
+          if (result.screenshotId) {
+            setScreenshotData({
+              id: result.screenshotId,
+              dataUrl: result.screenshot
+            })
+
+            // Load conversation history for this screenshot
+            loadConversationHistory(result.screenshotId)
+          }
+
+          // Switch to chat view if we have a screenshot
+          setCurrentView("chat")
+        }
+
+        // Set current view from storage if available
+        if (result.currentView) {
+          setCurrentView(result.currentView)
         }
       }
-    })
+    )
   }, [])
 
   // Load user credits when authenticated
@@ -76,6 +220,9 @@ const IndexPopup = () => {
       const data = await getUserCredits()
       setFreeTrialsLeft(data.freeTrialsLeft)
       setIsTrialExpired(data.isExpired)
+      if (data.tier) {
+        setUserTier(data.tier)
+      }
     } catch (error) {
       console.error("Error loading user credits:", error)
     }
@@ -85,7 +232,16 @@ const IndexPopup = () => {
     if (!input.trim() || !screenshot || isTrialExpired) return
 
     const userQuestion = input.trim()
-    setMessages((prev) => [...prev, { sender: "user", text: userQuestion }])
+    const userMsgId = Date.now().toString()
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: "user",
+        text: userQuestion,
+        id: userMsgId,
+        timestamp: new Date()
+      }
+    ])
     setInput("")
     setLoading(true)
 
@@ -96,7 +252,15 @@ const IndexPopup = () => {
         userQuestion,
         screenshotData?.id
       )
-      setMessages((prev) => [...prev, { sender: "ai", text: response.answer }])
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: response.answer,
+          id: (Date.now() + 1).toString(),
+          timestamp: new Date()
+        }
+      ])
 
       // Update free trials left from API response
       if (response.freeTrialsLeft !== undefined) {
@@ -146,7 +310,9 @@ const IndexPopup = () => {
           ...prev,
           {
             sender: "ai",
-            text: "You've used all your free credits. Please upgrade to continue using AskShot."
+            text: "You've used all your free credits. Please upgrade to continue using AskShot.",
+            id: Date.now().toString(),
+            timestamp: new Date()
           }
         ])
       } else {
@@ -154,7 +320,9 @@ const IndexPopup = () => {
           ...prev,
           {
             sender: "ai",
-            text: "Sorry, I couldn't analyze that screenshot. Please try again."
+            text: "Sorry, I couldn't analyze that screenshot. Please try again.",
+            id: Date.now().toString(),
+            timestamp: new Date()
           }
         ])
       }
@@ -176,9 +344,15 @@ const IndexPopup = () => {
     clearScreenshot()
     setScreenshotData(null)
     setMessages([
-      { sender: "ai", text: "Hi! Ask me anything about the image." }
+      {
+        sender: "ai",
+        text: "Hi! Ask me anything about the image.",
+        id: Date.now().toString(),
+        timestamp: new Date()
+      }
     ])
     setShowHistory(false)
+    setCurrentView("capture")
 
     // Clear screenshot data from storage
     chrome.storage.local.remove(["screenshot", "screenshotId"], () => {
@@ -210,13 +384,28 @@ const IndexPopup = () => {
         // Add initial AI greeting
         conversationMessages.push({
           sender: "ai",
-          text: "Hi! Ask me anything about this image from your history."
+          text: "Hi! Ask me anything about this image from your history.",
+          id: "greeting-" + Date.now(),
+          timestamp: new Date()
         })
 
         // Add all questions and answers in chronological order
-        data.questions.forEach((q) => {
-          conversationMessages.push({ sender: "user", text: q.question })
-          conversationMessages.push({ sender: "ai", text: q.answer })
+        data.questions.forEach((q, index) => {
+          const baseTime = Date.now() - (data.questions.length - index) * 60000
+
+          conversationMessages.push({
+            sender: "user",
+            text: q.question,
+            id: "hist-q-" + index + "-" + baseTime,
+            timestamp: new Date(baseTime)
+          })
+
+          conversationMessages.push({
+            sender: "ai",
+            text: q.answer,
+            id: "hist-a-" + index + "-" + (baseTime + 1000),
+            timestamp: new Date(baseTime + 1000)
+          })
         })
 
         setMessages(conversationMessages)
@@ -225,7 +414,9 @@ const IndexPopup = () => {
         setMessages([
           {
             sender: "ai",
-            text: "Hi! Ask me anything about this image from your history."
+            text: "Hi! Ask me anything about this image from your history.",
+            id: "greeting-" + Date.now(),
+            timestamp: new Date()
           }
         ])
       }
@@ -242,73 +433,311 @@ const IndexPopup = () => {
     }
   }
 
+  // Simple transition for animations
+  const springTransition = {
+    duration: 0.5
+  }
+
   if (!isAuthenticated) {
     return <AuthScreen onAuthChange={handleAuthChange} />
   }
 
-  if (showHistory) {
-    return (
-      <div className="w-[400px] h-[600px] bg-white rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.17)] backdrop-blur-xl flex flex-col overflow-hidden border border-white/40">
-        <div className="absolute inset-0 bg-white z-10">
-          <ScreenshotHistory
-            onSelectScreenshot={handleSelectFromHistory}
-            onClose={() => setShowHistory(false)}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  if (!screenshot) {
-    return (
-      <CaptureScreen
-        onStartDrawing={startDrawing}
-        onAuthChange={handleAuthChange}
-      />
-    )
-  }
-
   return (
-    <div className="w-[400px] h-[600px] bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.17)] backdrop-blur-xl flex flex-col overflow-hidden border border-white/40">
-      <ChatHeader
-        screenshot={screenshot}
-        onStartDrawing={startDrawing}
-        onAuthChange={handleAuthChange}
-      />
-      <ScreenshotDisplay
-        screenshot={screenshot}
-        onClear={handleClearScreenshot}
-      />
-      <div className="flex justify-end px-3 mb-1">
-        <button
-          onClick={() => setShowHistory(true)}
-          className="text-xs text-blue-600 hover:text-blue-800">
-          View History
-        </button>
+    <div className="w-[400px] h-[600px] bg-black text-white overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-[#1a1a2e]/95 to-[#1a1a2e]/90 backdrop-blur-xl">
+        <ParticleBackground />
       </div>
-      <ChatMessages messages={messages} loading={loading} />
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Header */}
+        <motion.div
+          className="sticky top-0 z-50 p-4 bg-black/80 backdrop-blur-md border-b border-[#333]/50"
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}>
+                <Sparkles className="w-6 h-6 text-purple-400" />
+              </motion.div>
+              <span className="font-bold text-lg bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                AskShot
+              </span>
+              {userTier === "paid" && (
+                <div className="bg-purple-500/20 text-purple-300 text-xs px-2 py-0.5 rounded-full border border-purple-500/30">
+                  Pro
+                </div>
+              )}
+            </div>
 
-      {/* Credits warning for low credits */}
-      {freeTrialsLeft < 3 && freeTrialsLeft > 0 && (
-        <div className="px-4 py-1 text-xs text-amber-700 bg-amber-50">
-          <span className="font-medium">Warning:</span> Only {freeTrialsLeft}{" "}
-          free {freeTrialsLeft === 1 ? "credit" : "credits"} left
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsDark(!isDark)}
+                className="p-2 rounded-full hover:bg-[#1a1a2e]/80 relative overflow-hidden group">
+                <motion.div
+                  initial={false}
+                  animate={{ rotate: isDark ? 0 : 180 }}
+                  transition={{ duration: 0.5 }}>
+                  {isDark ? (
+                    <Moon className="h-4 w-4" />
+                  ) : (
+                    <Sun className="h-4 w-4" />
+                  )}
+                </motion.div>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="p-1 rounded-full hover:bg-[#1a1a2e]/80 relative">
+                  <div className="w-6 h-6 bg-[#1a1a2e]/80 rounded-full flex items-center justify-center">
+                    <User className="h-4 w-4" />
+                  </div>
+                  {isAuthenticated && (
+                    <motion.div
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-cyan-400 rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a2e]/95 backdrop-blur-md border border-[#333]/50 rounded-lg shadow-xl z-50">
+                      <div className="p-2">
+                        <button
+                          onClick={() => {
+                            setShowDropdown(false)
+                            // Open settings
+                          }}
+                          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a2e]/80 flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Settings
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDropdown(false)
+                            setIsAuthenticated(false)
+                          }}
+                          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a2e]/80 flex items-center gap-2">
+                          <LogOut className="h-4 w-4" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Navigation */}
+        <div className="px-4 py-2">
+          <div className="flex gap-1 bg-[#1a1a2e]/50 backdrop-blur-sm rounded-lg p-1 border border-[#333]/30">
+            {[
+              { key: "capture", icon: Camera, label: "Capture" },
+              { key: "chat", icon: MessageCircle, label: "Chat" },
+              { key: "history", icon: History, label: "History" }
+            ].map(({ key, icon: Icon, label }) => (
+              <button
+                key={key}
+                onClick={() => setCurrentView(key as any)}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-md relative overflow-hidden ${
+                  currentView === key
+                    ? "bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg"
+                    : "hover:bg-[#1a1a2e]/80"
+                }`}>
+                <Icon className="w-4 h-4" />
+                {label}
+                {currentView === key && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 rounded-md"
+                    transition={{ duration: 0.5 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
 
-      <ChatInput
-        input={input}
-        onInputChange={setInput}
-        onSend={handleSend}
-        disabled={isTrialExpired}
-      />
+        {/* Main Content */}
+        <div className="flex-1 px-4 pb-4 overflow-hidden h-[calc(100%-130px)]">
+          <AnimatePresence mode="wait">
+            {currentView === "capture" && (
+              <motion.div
+                key="capture"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="h-full flex flex-col justify-center">
+                <div className="p-6 text-center">
+                  <motion.div
+                    className="mb-6"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 }}>
+                    <div className="w-16 h-16 mx-auto bg-[#1a1a2e]/80 rounded-full flex items-center justify-center border border-purple-500/30 relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.05, 1],
+                          y: [0, -2, 0]
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}>
+                        <Camera className="w-8 h-8 text-purple-400" />
+                      </motion.div>
+                    </div>
+                  </motion.div>
 
-      {/* Credits display */}
-      {isTrialExpired && (
-        <div className="text-xs text-red-600 text-center mt-1 mb-2">
-          Your free credits have expired. Upgrade to continue.
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}>
+                    <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                      Capture & Analyze
+                    </h3>
+                    <p className="text-gray-400 mb-6 text-sm">
+                      Draw on your screen to get AI-powered insights
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    className="space-y-3"
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}>
+                    <button
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-lg flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-purple-500/20 relative overflow-hidden group"
+                      onClick={startDrawing}>
+                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Zap className="w-4 h-4" />
+                      Draw & Analyze
+                    </button>
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+
+            {currentView === "chat" && (
+              <motion.div
+                key="chat"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="h-full flex flex-col overflow-hidden">
+                {screenshot ? (
+                  <>
+                    <motion.div
+                      className="relative"
+                      initial={{ y: -10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ duration: 0.3 }}>
+                      <ScreenshotDisplay
+                        screenshot={screenshot}
+                        onClear={handleClearScreenshot}
+                      />
+                    </motion.div>
+
+                    <motion.div
+                      className="flex-1 overflow-y-auto p-4 space-y-4"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}>
+                      <ChatMessages messages={messages} loading={loading} />
+                    </motion.div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <motion.div
+                      className="text-center p-8"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.3 }}>
+                      <div className="w-16 h-16 mx-auto bg-[#1a1a2e]/80 rounded-full flex items-center justify-center mb-4 border border-[#333]/50">
+                        <Camera className="w-8 h-8 text-purple-400" />
+                      </div>
+                      <h3 className="text-lg font-medium bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+                        No Screenshot
+                      </h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Capture a screenshot first to start a chat
+                      </p>
+                      <button
+                        onClick={() => setCurrentView("capture")}
+                        className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-cyan-500 text-white rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/20 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        Go to Capture
+                      </button>
+                    </motion.div>
+                  </div>
+                )}
+
+                {screenshot && (
+                  <motion.div
+                    className="p-4 pt-0"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.3 }}>
+                    <div className="relative bg-[#1a1a2e]/50 rounded-lg border border-[#333]/50 overflow-hidden">
+                      <ChatInput
+                        input={input}
+                        onInputChange={setInput}
+                        onSend={handleSend}
+                        disabled={isTrialExpired}
+                      />
+                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-purple-500/5 to-cyan-500/5" />
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Credits display */}
+                {isTrialExpired && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs text-red-400 text-center px-4 py-2 bg-red-900/20 border-t border-red-900/30">
+                    Your free credits have expired. Upgrade to continue.
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
+            {currentView === "history" && (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="h-full overflow-hidden">
+                <div className="bg-[#1a1a2e]/50 backdrop-blur-sm rounded-lg border border-[#333]/50 h-full">
+                  <motion.div
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3 }}>
+                    <ScreenshotHistory
+                      onSelectScreenshot={handleSelectFromHistory}
+                      onClose={() => setCurrentView("capture")}
+                    />
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      )}
+      </div>
     </div>
   )
 }

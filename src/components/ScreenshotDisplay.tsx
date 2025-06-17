@@ -9,33 +9,39 @@ export const ScreenshotDisplay = ({
   screenshot,
   onClear
 }: ScreenshotDisplayProps) => (
-  <div className="relative h-48 bg-gradient-to-r from-violet-400 via-fuchsia-300 to-violet-300 animate-gradient p-4 flex flex-col items-center justify-center overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent backdrop-blur-[2px]" />
-
+  <div className="relative overflow-hidden">
     {screenshot && (
       <button
         onClick={onClear}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-white/70 hover:bg-white/90 shadow-md transition-all duration-200 border border-white/40 z-10"
+        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 transition-all duration-200 z-10"
         title="Clear screenshot">
-        <X size={16} className="text-red-500" />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
       </button>
     )}
 
-    <div className="relative w-full max-w-[280px] aspect-video bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg flex items-center justify-center border border-white/40 transition-transform hover:scale-[1.02] cursor-pointer">
+    <div className="w-full h-48 flex items-center justify-center">
       {screenshot ? (
         <img
           src={screenshot}
           alt="Screenshot"
-          className="w-full h-full object-contain rounded-2xl"
+          className="max-w-full max-h-full object-contain"
           onError={(e) => {
             console.error("ScreenshotDisplay | Image failed to load")
             e.currentTarget.style.display = "none"
           }}
         />
       ) : (
-        <span className="bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent font-medium">
-          Screenshot will appear here
-        </span>
+        <div className="text-gray-400 text-center">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span>Screenshot will appear here</span>
+        </div>
       )}
     </div>
   </div>
