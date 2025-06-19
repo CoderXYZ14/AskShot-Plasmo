@@ -77,9 +77,9 @@ export function AuthButton({ onAuthChange }: AuthButtonProps) {
     return (
       <button 
         disabled
-        className="flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed"
+        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-[#1a1a2e]/80 text-gray-400 cursor-not-allowed border border-[#333]/50"
       >
-        <div className="w-4 h-4 border-2 border-t-transparent border-gray-300 rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-t-transparent border-purple-400/50 rounded-full animate-spin" />
         Loading...
       </button>
     )
@@ -88,7 +88,7 @@ export function AuthButton({ onAuthChange }: AuthButtonProps) {
   if (authenticated && user) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-xl bg-white/70 text-gray-700 border border-white/40">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-xl bg-[#1a1a2e]/80 text-gray-200 border border-[#333]/50">
           {user.image && (
             <img 
               src={user.image} 
@@ -114,9 +114,9 @@ export function AuthButton({ onAuthChange }: AuthButtonProps) {
   return (
     <button
       onClick={handleLogin}
-      className="relative px-3 py-1.5 text-sm font-medium rounded-xl text-white overflow-hidden transition-all hover:shadow-lg group"
+      className="relative px-4 py-2 text-sm font-medium rounded-xl text-white overflow-hidden transition-all hover:shadow-lg group"
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-transform group-hover:scale-[1.1] duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-cyan-500 transition-transform group-hover:scale-[1.1] duration-300" />
       <span className="relative">Login with Google</span>
     </button>
   )

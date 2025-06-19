@@ -17,8 +17,10 @@ import { useEffect, useRef, useState } from "react"
 import {
   analyzeScreenshot,
   getScreenshotQuestions,
-  getUserCredits
+  getUserCredits,
+  getUserTier
 } from "../utils/api"
+import { signOut } from "../utils/auth"
 
 import "../styles/global.css"
 
@@ -161,7 +163,7 @@ const IndexPopup = () => {
   const [screenshotData, setScreenshotData] = useState<ScreenshotData | null>(
     null
   )
-  const [showHistory, setShowHistory] = useState(false)
+
   const [freeTrialsLeft, setFreeTrialsLeft] = useState<number>(5)
   const [isTrialExpired, setIsTrialExpired] = useState(false)
   const [isDark, setIsDark] = useState(true)
@@ -213,11 +215,17 @@ const IndexPopup = () => {
 
   const loadUserCredits = async () => {
     try {
-      const data = await getUserCredits()
-      setFreeTrialsLeft(data.freeTrialsLeft)
-      setIsTrialExpired(data.isExpired)
-      if (data.tier) {
-        setUserTier(data.tier)
+      const creditsData = await getUserCredits()
+      setFreeTrialsLeft(creditsData.freeTrialsLeft)
+      setIsTrialExpired(creditsData.isExpired)
+
+      try {
+        const tierData = await getUserTier()
+        if (tierData.tier) {
+          setUserTier(tierData.tier)
+        }
+      } catch (tierError) {
+        console.error("Error loading user tier:", tierError)
       }
     } catch (error) {
       console.error("Error loading user credits:", error)
@@ -347,7 +355,7 @@ const IndexPopup = () => {
         timestamp: new Date()
       }
     ])
-    setShowHistory(false)
+
     setCurrentView("capture")
 
     // Clear screenshot data from storage
@@ -358,7 +366,7 @@ const IndexPopup = () => {
 
   const handleSelectFromHistory = (imageUrl: string, screenshotId: string) => {
     setScreenshot(imageUrl)
-    setShowHistory(false)
+
     setScreenshotData({
       id: screenshotId,
       dataUrl: imageUrl
@@ -541,9 +549,10 @@ const IndexPopup = () => {
                           Settings
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setShowDropdown(false)
                             setIsAuthenticated(false)
+                            await signOut()
                           }}
                           className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a2e]/80 flex items-center gap-2">
                           <LogOut className="h-4 w-4" />

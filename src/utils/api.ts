@@ -1,7 +1,6 @@
 import axios from "axios"
 
-const API_BASE_URL =
-  process.env.PLASMO_PUBLIC_API_URL || "http://localhost:3000"
+const API_BASE_URL = process.env.PLASMO_PUBLIC_API_URL || "https://askshot.xyz"
 
 function ensureValidImageData(imageData: string): string {
   if (!imageData) throw new Error("No image data provided")
@@ -44,6 +43,17 @@ export async function analyzeScreenshot(
     return response.data
   } catch (error) {
     console.error("AnalyzeScreenshot | Error:", error)
+
+    // Check if it's an overloaded error response from our API
+    if (error.response?.data?.isOverloaded) {
+      throw {
+        isOverloaded: true,
+        message:
+          error.response.data.message ||
+          "Service is experiencing high demand. Please try again later."
+      }
+    }
+
     throw error
   }
 }
@@ -76,6 +86,16 @@ export async function getUserCredits() {
     return response.data
   } catch (error) {
     console.error("GetUserCredits | Error:", error)
+    throw error
+  }
+}
+
+export async function getUserTier() {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/user/tier`)
+    return response.data
+  } catch (error) {
+    console.error("GetUserTier | Error:", error)
     throw error
   }
 }

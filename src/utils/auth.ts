@@ -9,10 +9,10 @@ export interface AuthSession {
 }
 
 let currentSession: AuthSession | null = null
-const authUrl = process.env.PLASMO_PUBLIC_BACKEND_URL || "http://localhost:3000"
+const authUrl = process.env.PLASMO_PUBLIC_BACKEND_URL || "https://askshot.xyz"
 export const signIn = async (): Promise<AuthSession | null> => {
   return new Promise((resolve) => {
-    const signInUrl = `${authUrl}/auth/signin?prompt=select_account`
+    const signInUrl = `${authUrl}/auth/signin?prompt=select_account&from=extension`
     const width = 600
     const height = 700
     const left = window.screen.width / 2 - width / 2
@@ -47,23 +47,37 @@ export const signIn = async (): Promise<AuthSession | null> => {
 }
 
 export const signOut = async (): Promise<void> => {
-  await chrome.storage.local.remove(["auth_session"])
   currentSession = null
+  await chrome.storage.local.remove([
+    "auth_session",
+    "screenshot",
+    "screenshotId",
+    "currentView"
+  ])
 
   const width = 600
   const height = 700
   const left = window.screen.width / 2 - width / 2
   const top = window.screen.height / 2 - height / 2
 
+  const signOutUrl = `${authUrl}/api/auth/signout?callbackUrl=/auth/signin?prompt=select_account`
+
   const signOutWindow = window.open(
-    `${authUrl}/api/auth/signout?callbackUrl=/auth/signin?prompt=select_account`,
+    signOutUrl,
     "SignOut",
-    `width=${width},height=${height},left=${left},top=${top},resizable,scrollbars=yes,status=1`
+    `width=${width},height=${height},left=${left},top=${top}`
   )
 
-  setTimeout(() => {
-    signOutWindow?.close()
-  }, 2000)
+  if (!signOutWindow) return
+
+  return new Promise<void>((resolve) => {
+    const interval = setInterval(() => {
+      if (signOutWindow.closed) {
+        clearInterval(interval)
+        resolve()
+      }
+    }, 500)
+  })
 }
 
 export const storeSession = async (session: AuthSession): Promise<void> => {

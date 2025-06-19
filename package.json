@@ -1,9 +1,14 @@
 {
-  "name": "plasmo",
-  "displayName": "Plasmo",
+  "name": "askshot-plasmo",
+  "displayName": "AskShot",
   "version": "0.0.1",
-  "description": "an extension",
+  "description": "A Chrome extension that lets you draw on any webpage, capture a screenshot, and chat with AI about the selected area.",
   "author": "coderxyz14",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CoderXYZ14/AskShot-Plasmo"
+  },
+  "homepage": "https://askshot.xyz",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
