@@ -99,3 +99,13 @@ export async function getUserTier() {
     throw error
   }
 }
+
+export async function deleteScreenshot(screenshotId: string) {
+  try {
+    const response = await axios.delete(`${API_BASE_URL}/api/screenshots/${screenshotId}`)
+    return response.data
+  } catch (error) {
+    console.error("DeleteScreenshot | Error:", error)
+    throw error
+  }
+}
