@@ -374,7 +374,7 @@ const IndexPopup = () => {
 
     // Load conversation history for this screenshot
     loadConversationHistory(screenshotId)
-    
+
     // Change view to chat
     setCurrentView("chat")
   }
@@ -542,15 +542,7 @@ const IndexPopup = () => {
                           </span>
                           Upgrade
                         </a>
-                        <button
-                          onClick={() => {
-                            setShowDropdown(false)
-                            // Open settings
-                          }}
-                          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a2e]/80 flex items-center gap-2">
-                          <Settings className="h-4 w-4" />
-                          Settings
-                        </button>
+
                         <button
                           onClick={async () => {
                             setShowDropdown(false)
