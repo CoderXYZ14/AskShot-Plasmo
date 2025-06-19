@@ -109,3 +109,13 @@ export async function deleteScreenshot(screenshotId: string) {
     throw error
   }
 }
+
+export async function deleteQuestion(questionId: string) {
+  try {
+    const response = await axios.delete(`${API_BASE_URL}/api/questions/${questionId}`)
+    return response.data
+  } catch (error) {
+    console.error("DeleteQuestion | Error:", error)
+    throw error
+  }
+}

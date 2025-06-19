@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import {
+  deleteQuestion,
   deleteScreenshot,
   getScreenshotQuestions,
   getScreenshots
@@ -35,6 +36,7 @@ export const ScreenshotHistory = ({
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null)
 
   useEffect(() => {
     loadScreenshots()
@@ -98,6 +100,20 @@ export const ScreenshotHistory = ({
       console.error("Error deleting screenshot:", error)
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      setDeletingQuestionId(questionId)
+      await deleteQuestion(questionId)
+      
+      // Remove the deleted question from state
+      setQuestions((prev) => prev.filter((q) => q._id !== questionId))
+    } catch (error) {
+      console.error("Error deleting question:", error)
+    } finally {
+      setDeletingQuestionId(null)
     }
   }
 
@@ -247,7 +263,41 @@ export const ScreenshotHistory = ({
             </div>
           ) : questions.length > 0 ? (
             questions.map((q) => (
-              <div key={q._id} className="mb-6 rounded-lg bg-gray-800 p-4">
+              <div key={q._id} className="mb-6 rounded-lg bg-gray-800 p-4 relative group/question">
+                <button
+                  onClick={() => handleDeleteQuestion(q._id)}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/question:opacity-100 transition-opacity"
+                  disabled={deletingQuestionId === q._id}>
+                  {deletingQuestionId === q._id ? (
+                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  )}
+                </button>
                 <div className="flex items-start mb-2">
                   <div className="bg-gray-700 rounded-full p-1 mr-2">
                     <svg
