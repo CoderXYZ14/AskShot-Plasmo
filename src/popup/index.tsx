@@ -374,6 +374,9 @@ const IndexPopup = () => {
 
     // Load conversation history for this screenshot
     loadConversationHistory(screenshotId)
+    
+    // Change view to chat
+    setCurrentView("chat")
   }
 
   const loadConversationHistory = async (screenshotId: string) => {

@@ -36,7 +36,9 @@ export const ScreenshotHistory = ({
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null)
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(
+    null
+  )
 
   useEffect(() => {
     loadScreenshots()
@@ -107,7 +109,7 @@ export const ScreenshotHistory = ({
     try {
       setDeletingQuestionId(questionId)
       await deleteQuestion(questionId)
-      
+
       // Remove the deleted question from state
       setQuestions((prev) => prev.filter((q) => q._id !== questionId))
     } catch (error) {
@@ -253,7 +255,7 @@ export const ScreenshotHistory = ({
                   }
                 }}
                 className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm py-1.5 px-3 rounded-full transition-colors">
-                Open in Extension
+                Open in Chat
               </button>
             </div>
           )}
@@ -263,7 +265,9 @@ export const ScreenshotHistory = ({
             </div>
           ) : questions.length > 0 ? (
             questions.map((q) => (
-              <div key={q._id} className="mb-6 rounded-lg bg-gray-800 p-4 relative group/question">
+              <div
+                key={q._id}
+                className="mb-6 rounded-lg bg-gray-800 p-4 relative group/question">
                 <button
                   onClick={() => handleDeleteQuestion(q._id)}
                   className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/question:opacity-100 transition-opacity"
