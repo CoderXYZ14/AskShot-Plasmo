@@ -1,6 +1,7 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "capture-screenshot") {
-    chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
+    // Using activeTab permission instead of tabs
+    chrome.tabs.captureVisibleTab({ format: "png" }, (dataUrl) => {
       console.log("captureScreenshot | Screenshot captured successfully")
       sendResponse?.({ success: true, data: dataUrl })
     })
